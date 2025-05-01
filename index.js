@@ -43,9 +43,23 @@ async function run() {
 const jobApplicationCollecting = client.db("jobHunter").collection("job_application") 
 
 
+  // jobs Post 
+app.post('/jobs', async (req , res) => {
+    const newJob = req.body ;
+    const result = await jobCollection.insertOne(newJob) ;
+    res.send(result)
+      })
+  
+
 // all job get
 app.get('/jobs' , async (req,res ) => {
-const cursar = jobCollection.find() ;
+  // condition jodi email thake tahale atat kor  na ota kor 
+  const email = req.query.email ;
+let query = {} ;
+  if(email){
+    query= {hr_email: email}
+  }
+const cursar = jobCollection.find(query) ;
 const result = await cursar.toArray() ;
 res.send(result) ;
 })
@@ -57,6 +71,16 @@ app.get('/jobs/:id' , async (req , res) => {
   const result = await jobCollection.findOne(query) 
   res.send(result) ;
 })
+
+
+//  joto gulo akta job a koto manush apply korse ta bar korte /job_id dara get 
+app.get('/job-application/jobs/:job_id' , async(req , res) => {
+  const jobId = req.params.job_id ;
+  const query = {job_id : jobId } 
+  const result = await jobApplicationCollecting.find(query).toArray() ;
+  res.send(result)
+})
+
 
 
 // query or email by dara matching data get 
@@ -84,10 +108,51 @@ app.get("/job-application" , async (req, res ) => {
 })
 
 
+app.patch('/job-application/:id' , async(req, res ) => {
+  const id = req.params.id ;
+  const data = req.body ;
+  const filter = { _id: new ObjectId(id)} ;
+  const updatedDoc ={
+   $set:{
+    status: data.status 
+   }
+  }
+  const result = await jobApplicationCollecting.updateOne(filter , updatedDoc) ;
+  res.send(result) ;
+})
+
+
 // job Application api or job post 
 app.post("/job-application" , async (req , res) => {
 const application = req.body ;
-const result =   await jobApplicationCollecting.insertOne(application)
+const result =   await jobApplicationCollecting.insertOne(application) ;
+
+// not the best away (use aggregate) 
+// skip --
+// count apply korse ki na 
+const id = application.job_id ;
+const quire = { _id: new ObjectId(id)} ;
+const job = await jobCollection.findOne(quire) ;
+ // console.log(job)
+
+ let newCount = 0 ;
+ if(job.applicationCount){
+  newCount= job.applicationCount + 1 ;
+ }
+ else{
+  newCount = 1 ;
+ }
+
+ // now update the job in info 
+ const filter = {_id : new ObjectId(id)} ;
+ const updatedDoc = {
+  $set:{
+    applicationCount: newCount 
+  }
+ }
+
+ const updateResult = await jobCollection.updateOne(filter , updatedDoc) ; 
+
 res.send(result)
 })
 
